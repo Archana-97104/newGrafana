@@ -96,7 +96,7 @@ public class Base {
     public void openIndexHtmlOnce(ITestContext context) throws IOException, InterruptedException {
     	String coppa = utilityData.get("COPPA");
         String account_type = utilityData.get("AccountType");
-        String input1 = utilityData.getOrDefault("Expected adrequest", "");
+        String input1 = utilityData.get("Expected adrequest");
         
        String vamValue = utilityData.get("VAM");
        
@@ -111,7 +111,14 @@ public class Base {
             driver.get("file:///Users/604550803/Documents/Automation/JDK ARM file(for Apple silicon chip)/AdresProj/index.html");
 
             WebDriverWait wait = new WebDriverWait(driver, Duration.ofSeconds(30));
-
+            try {
+                WebDriverWait alertWait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                Alert alert = alertWait.until(ExpectedConditions.alertIsPresent());
+                System.out.println("Alert found: " + alert.getText());
+                alert.accept(); // Accept the alert (or use alert.dismiss() to dismiss it)
+            } catch (TimeoutException e) {
+                System.out.println("No alert present.");
+            }
             // Wait for the COPPA field to be visible and fill it in
             //WebElement coppaField = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath("//input[@id='coppa']")));
             Select coppaDropdown = new Select(wait.until(ExpectedConditions.elementToBeClickable(By.id("coppa"))));
@@ -128,10 +135,12 @@ public class Base {
 
 if (input1 != null && !input1.isEmpty()) {
     WebElement expectedAdRequestField = driver.findElement(By.cssSelector("textarea#input1"));
-    expectedAdRequestField.sendKeys(input1);  // Only call sendKeys once
+    // Ensure the field is clear before sending keys
+    expectedAdRequestField.clear();
+    expectedAdRequestField.sendKeys(input1);
+    System.out.println("Successfully set Expected Ad Request to: " + input1);
 } else {
-    System.out.println("Input1 is null or empty");
-    // Optionally, handle this case (e.g., provide a default value or throw an exception)
+    System.out.println("Warning: Expected Ad Request is null or empty");
 }
             
             WebDriverWait wait2 = new WebDriverWait(driver, Duration.ofSeconds(30));
@@ -155,10 +164,7 @@ if (input1 != null && !input1.isEmpty()) {
                 WebElement resultElement = wait2.until(ExpectedConditions.visibilityOfElementLocated(By.id("result")));
                 System.out.println("Comparison Results: " + resultElement.getText());
 
-                // Optional: Take screenshot of results
-                File screenshot = ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
-                Files.copy(screenshot.toPath(), Paths.get(baseDir + "comparison_results.png"));
-                System.out.println("Screenshot saved to: " + baseDir + "comparison_results.png");
+               
 
                 // Give some time to view the results
                 Thread.sleep(5000);
@@ -184,37 +190,31 @@ if (input1 != null && !input1.isEmpty()) {
         Map<String, String> utilityData = new HashMap<>();
         try (FileInputStream fis = new FileInputStream(new File(filePath))) {
             Workbook workbook = WorkbookFactory.create(fis);
-            Sheet sheet = workbook.getSheetAt(0); // Assuming the data is in the first sheet
+            Sheet sheet = workbook.getSheetAt(0);
             
-            // Assuming data is in the first row, and relevant columns are 0, 1, 2, 3 for COPPA, AccountType, VAM, ExpectedAdRequest
-            Row row = sheet.getRow(1); // Skip header row (index 0)
+            Row row = sheet.getRow(1); // Skip header row
             
             // Reading each cell and trimming any extra spaces
             String coppa = row.getCell(0).getStringCellValue().trim();
             String accountType = row.getCell(1).getStringCellValue().trim();
-            String vam = row.getCell(2).getStringCellValue().trim();
-            String expectedAdRequest = row.getCell(3).getStringCellValue().trim();
-            
-            System.out.println("COPPA: " + coppa);
-            System.out.println("AccountType: " + accountType);
-            System.out.println("VAM: " + vam);
-            System.out.println("ExpectedAdRequest: " + expectedAdRequest);
+            String expectedAdRequest = row.getCell(2).getStringCellValue().trim();
+            String vam = row.getCell(3).getStringCellValue().trim();
 
-            // Add data to map
+            // Debug logging
+            System.out.println("Reading from Excel - Expected Ad Request: " + expectedAdRequest);
+
             utilityData.put("COPPA", coppa);
             utilityData.put("AccountType", accountType);
             utilityData.put("VAM", vam);
-            utilityData.put("ExpectedAdRequest", expectedAdRequest);
+            // Fix: Store with the exact key name that's used in openIndexHtmlOnce
+            utilityData.put("Expected adrequest", expectedAdRequest);
+
             workbook.close();
-        } catch (IOException e) {
+        } catch (Exception e) {
+            System.out.println("Error reading Excel file: " + e.getMessage());
             e.printStackTrace();
         }
-    
-
-       
         return utilityData;
-
-        
     }
     
 
